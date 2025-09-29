@@ -4,9 +4,8 @@ def calculate_distance(coordinates, list):
     dist = math.sqrt((float(coordinates[0])-float(coordinates[3]))**2+(float(coordinates[1])-float(coordinates[4]))**2+(float(coordinates[2])-float(coordinates[5]))**2)
     list.append(dist)
 
-def main():
-
-    # Replace the filename with your own: #
+def calculate_average_length():
+        # Replace the filename with your own: #
     filename = 'static.tsv'
 
     l_arm_lengths = []
@@ -54,7 +53,11 @@ def main():
 
     avg_trunk = sum(trunk_lenghts)/len(trunk_lenghts)
 
-    print(avg_l_arm,avg_r_arm,avg_l_forearm,avg_r_forearm,avg_l_thigh,avg_r_thigh,avg_l_leg,avg_r_leg,avg_trunk)
+    return avg_l_arm,avg_r_arm,avg_l_forearm,avg_r_forearm,avg_l_thigh,avg_r_thigh,avg_l_leg,avg_r_leg,avg_trunk
+
+def main():
+    # compute the average lenghts of all bodies #
+    l_arm,r_arm,l_forearm,r_forearm,l_thigh,r_thigh,l_leg,r_leg,trunk = calculate_average_length()
 
 if __name__ == "__main__":
     main()
