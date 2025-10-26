@@ -2,7 +2,7 @@
 
 ## 📄 Overview
 
-This Jupyter Notebook performs the complete data preparation and processing pipeline required to convert raw 3D kinematic marker data into the necessary input files for the **Multibody Kinematic Analysis Program (MuboKAP)**. The process focuses on creating a planar (2D) multibody model for inverse dynamic analysis.
+This Jupyter Notebook performs the complete data preparation and processing pipeline required to convert raw 3D kinematic marker data into the necessary input files for the **Multibody Dynamic Analysis Program (MuboDAP)**. The process focuses on creating a planar (2D) multibody model for inverse dynamic analysis.
 
 The notebook executes the following major steps sequentially:
 
@@ -10,13 +10,13 @@ The notebook executes the following major steps sequentially:
 
 2.  **Model Definition:** Defines the 15-point rigid body model, including establishing the trunk origin from the hip and shoulder marker midpoints.
 
-3.  **Filtering:** Applies a second-order, forward-backward Butterworth filter (with a fixed $6\ Hz$ cutoff frequency) to remove high-frequency noise from all kinematic marker data.
+3.  **Filtering:** Applies a second-order, forward-backward Butterworth filter (cutoff frequency determined via residual analysis) to remove high-frequency noise from all kinematic marker data.
 
 4.  **Static Trial Analysis:** Uses the filtered static trial data to calculate average segment lengths, define the **Local Coordinate Systems (LCS)**, and determine **Center of Mass (CoM)** locations based on anthropometric tables.
 
 5.  **Kinematic Calculation:** Calculates the segment-specific joint angles ($\theta$) relative to the global frame for the dynamic trials.
 
-6.  **MuboKAP File Generation:** Formats the calculated segment angles and constraints into the specific input coordinate files and driver files required by MuboKAP.
+6.  **MuboDAP File Generation:** Formats the calculated segment angles and constraints into the specific input coordinate files and driver files required by MuboDAP.
 
 ## 🛠️ Setup: User-Configurable Paths
 
@@ -34,14 +34,78 @@ Before running the notebook, the user **MUST** update the file paths within the 
 
 ## 📦 Generated Output
 
-The notebook generates several input files for the MuboKAP solver for each dynamic trial (Gait and Plank). The output files are saved based on the defined `flag_name` (e.g., `gait_'i'`).
+The notebook generates several input files for the MuboDAP solver for each dynamic trial (Gait and Plank). The output files are saved based on the defined `flag_name` (e.g., `gait_'i'`).
 
-| Output File                       | File Name                                                             | Content Description                                                                                                                                                                                             | MuboKAP Purpose |
-|:----------------------------------|:----------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| :--- |
-| Body and Joint Configuration data | `rev_joints.tsv`; `df_body_config.tsv` and `df_body_config_plank.tsv` | Body configuration stores the initial position for each of the 14 rigid bodies, for each trial. Joint configuration specifies the constant coordinates of the articulation point in the two local reference frames. |  |
+| Output File                       | File Name                                                             | Content Description                                                                                                                                                                                             |  
+|:----------------------------------|:----------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|  
+| Body and Joint Configuration data | `rev_joints.tsv`; `df_body_config.tsv` and `df_body_config_plank.tsv` | Body configuration stores the initial position for each of the 14 rigid bodies, for each trial. Joint configuration specifies the constant coordinates of the articulation point in the two local reference frames. |
 | Driver File                       | `gait_'i'.txt` or `plank_'i'.txt`                                     | Defines the constraints and connections of the model                                                                                                                                                            
 
 
-# MuboKAP Input
+# MuboDAP Input
 
-The files `PlankAnalysisModel.ipynb` and `GaitAnalysisModel.ipynb` hold the final configuration for MuboKAP. These files are made up of the output files explained above. 
+The files `PlankAnalysisModel.ipynb` and `GaitAnalysisModel.ipynb` hold the final configuration for MuboDAP. These files are made up of the output files explained above.
+
+# processForceData.ipynb
+
+## 📄 Overview
+
+This Jupyter Notebook handles the **ground reaction force (GRF) preprocessing** required for the Multibody Dynamic Analysis Program (**MuboDAP**). It converts raw MATLAB force plate recordings into filtered datasets compatible with the kinematic data generated by `generate_muboInput.ipynb`.
+
+The notebook performs the following steps:
+
+1. **MATLAB File Import:**  
+   Loads `.mat` files containing the 3D force and center of pressure (CoP) data from up to three force plates (`fp1`, `fp2`, `fp3`).  
+   Each force plate dataset includes the columns:  
+   `fx`, `fy`, `fz`, `cop_x`, `cop_y`, `cop_z`.
+
+2. **Unit Conversion:**  
+   Converts all CoP coordinates from millimeters to meters for consistency with marker-based kinematic data.
+
+3. **Filtering:**  
+   Applies a second-order, zero-phase **Butterworth low-pass filter** (cutoff frequency: CoP `10 Hz`, Force `20 Hz`) to all force and CoP signals to remove high-frequency noise while preserving movement dynamics.
+
+4. **Trial Selection:**  
+   Uses the variable `flag` to switch between the `'gait'` and `'plank'` analysis trials.  
+   Example:
+   ```python
+   flag = 'plank'  # options: 'gait' or 'plank'
+   ```
+
+5. **Output Generation:**  
+   The notebook creates separate filtered output files for each force plate in the selected trial.  
+   The processed data is saved as `.csv` files within the corresponding folder under `Dynamic Analysis/{flag}/`.
+
+## 🛠️ Setup: User-Configurable Paths
+
+Before execution, verify the file paths defined in the notebook:
+
+| Variable | Example Path | Description |
+|:----------|:--------------|:------------|
+| `flag` | `'plank'` or `'gait'` | Determines which dynamic trial data set to process. |
+| `file_path` | `'Dynamic Analysis/plank/plank_f.mat'` | Path to the MATLAB `.mat` file containing raw force plate data. |
+
+## 📦 Generated Output
+
+For each selected dynamic trial, the notebook outputs the following filtered datasets:
+
+| Output File          | Description |
+|:---------------------|:-------------|
+| `VarForceAppl_1.csv` | Filtered force and CoP data from Force Plate 1. |
+| `VarForceAppl_2.csv` | Filtered force and CoP data from Force Plate 2. |
+| `VarForceAppl_3.csv` | Filtered force and CoP data from Force Plate 3. |
+
+These files are required for **inverse dynamic analysis** and can be used in combination with the kinematic outputs from `generate_muboInput.ipynb` to drive simulations in **MuboDAP**.
+
+---
+
+## 🔗 Workflow Integration
+
+The two notebooks form a complete preprocessing pipeline:
+
+| Step | Notebook | Purpose |
+|:------|:-----------|:----------|
+| 1 | `processForceData.ipynb` | Processes and filters ground reaction force data from MATLAB `.mat` files. |
+| 2 | `generate_muboInput.ipynb` | Processes 3D kinematic marker data and generates model, joint, and driver input files for MuboDAP. |
+
+Together, these steps provide all necessary input data for inverse dynamic analysis in the MuboDAP environment.
